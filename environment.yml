@@ -1,0 +1,13 @@
+name: hcr
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - blast
+  - python=3.10
+  - pip
+  - pip:
+    - ipykernel
+    - bio
+    - ipyform
