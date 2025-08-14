@@ -3,3 +3,4 @@ ref/*.fa
 ref/*.fa
 #ref/*.gz
 *.fa
+.ipynb_checkpoints
