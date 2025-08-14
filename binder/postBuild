@@ -1,4 +1,4 @@
 #!/bin/bash
 cd ref/
-wget ftp://ftp.ensembl.org/pub/release-112/fasta/danio_rerio/cdna/Danio_rerio.GRCz11.cdna.all.fa.gz
+#wget ftp://ftp.ensembl.org/pub/release-112/fasta/danio_rerio/cdna/Danio_rerio.GRCz11.cdna.all.fa.gz
 gunzip Danio_rerio.GRCz11.cdna.all.fa.gz
