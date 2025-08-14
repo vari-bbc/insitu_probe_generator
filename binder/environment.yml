@@ -14,4 +14,3 @@ dependencies:
     - ipykernel
     - bio
     - ipyform
-    - nbconvert
