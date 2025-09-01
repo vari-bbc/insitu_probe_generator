@@ -91,7 +91,7 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
 
 
     def max33(maxprobe,seqs,numbr):
-        if maxprobe == 'y':
+        if maxprobe == 'Yes':
             if int(numbr) < int(len(seqs)):
                 reduced = []
                 entry = np.zeros(len(seqs))
@@ -183,10 +183,8 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
             print()
             print("This is the in-place localization of the probe pairs along the full-length sense cDNA.")
             print()
-            header_ss = ">"+name+" Sense Strand"
-            sequence_ss = g
-            wrapped_ss = "\n".join(sequence_ss[i:i+60] for i in range(0, len(sequence_ss), 60))
-            display(Markdown(f"```\n{header_ss}\n{wrapped_ss}\n```"))
+            print(">"+name+" Sense Strand")
+            print(g)
             print()
             print()
             print()
@@ -299,7 +297,7 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
         
         
         
-        if choose == 'y':
+        if choose == 'Yes':
             ## creating a recursive search for a path that results in the greatest number of probe sequences given the cull
             b = 1
             for x in np.arange(1,len(pos),1):   
@@ -351,7 +349,7 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
         
         
         
-        if BlastProbes == 'n':
+        if BlastProbes == 'No':
             newlist = max33(maxprobe,newlist,numbr)
             count = str(len(newlist))
             print()
@@ -385,7 +383,7 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
         ## PROBES THAT MATCH A SEQUENCE IN BLAST WITH A LENGTH MATCH, 60BP > X > 40BP, AND AN E-VALUE < 1E-15 ARE KEPT, OTHERS ARE DISCARDED
     
     
-        if BlastProbes == "y":
+        if BlastProbes == "Yes":
             print()
             print("BLASTn of probes in progress, this may take a few minutes.")
             print()
@@ -449,7 +447,7 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
                 filterblastbad = np.array(filterblastbad)
                 uniquesbad = np.unique((uniquesbad)) 
                 if len(uniquesbad) > 0:
-                    if dropout == 'y':
+                    if dropout == 'Yes':
                         ind = 0
                         for a in uniquesbad:
                             remove = remove.drop(remove.index[int(a)-ind])
@@ -460,14 +458,17 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
                 print()
                 print("Probe pairs that had possible off-target matches to the provided database (lower e-value but with high site coverage). ")
                 print("   Pairs ")
-                display(uniquesbad)  
+                if not uniquesbad :
+                    print("No probes detected.")
+                else :
+                    print(uniquesbad)
                 print()
                 print("Probe pairs that had good matches to the provided database were determined to be the following.")
                 print("   Pairs ")
-                display(uniques)
+                print(*uniques, sep=', ')
                 print()
                 print()
-                if show == 'y':
+                if show == 'Yes':
                     print()
                     print()
                     print("The list below shows potentially problematic binding between a probe and some sequence in the provided database.  ")
@@ -490,7 +491,7 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
 
                 if BlastcDNA == 'n':   
                     if len(uniquesbad) > 0:
-                        if dropout == 'y':
+                        if dropout == 'Yes':
                             remove = remove.to_dict()
                             a=0
                             seqs={}
@@ -556,7 +557,7 @@ def maker(name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,dropo
         
     print()
     print()
-    if report == 'y':
+    if report == 'Yes':
         print("Run "+str(date.today())+"\n   with settings: \n\t5'Pause:\t"+str(pause)+" \n\tChoice of probe set:\t"+str((choose))+"\tPair used: "+str(choice)+" \n\tLength of acceptable polyA/polyT runs:\t"+str(polyAT)+" \n\tLength of acceptable polyC/polyG runs:\t"+str(polyCG)+" \n\tBLASTn of Probes:\t"+str((BlastProbes))+" \n\tRemoval of probes with low quality BLAST hits:\t"+str((dropout)) )
 
     print()
