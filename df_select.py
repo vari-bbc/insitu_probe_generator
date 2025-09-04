@@ -137,15 +137,7 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
             return(seqs)
 
 
-    def output(cdna,g,fullseq,count,amplifier,name,pause,seqs):
-
-        df_all = pd.DataFrame()
-        amplifier=str((amplifier).upper())
-        test=amp(amplifier)
-        uspc=test[0]
-        dspc=test[1]
-        upinit=test[2]
-        dninit=test[3]
+    def output(cdna,g,fullseq,count,amplifier,name,pause,seqs,df_grid):
 
         if int(count) > 0:
             print()
@@ -153,31 +145,10 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
             print("Figure Layout of Probe Sequences:")
             print("")
             print(str(amplifier+"_"+str(name)+"_PP"+str(count)+"_Dla"+str(pause)))
-            columns = ["Pair#","Initiator","Spacer","Probe_1","Probe_2","Spacer","Initiator"]
-
-
-            print("Pair# ","Initiator","Spacer","Probe ","Probe ","Spacer ","Initiator")
-            i=0
-            while i < len(seqs):
-                print(str(i+1),tab,upinit,tab,uspc,tab,seqs[i][1][27:52],tab,tab,seqs[i][1][0:25],tab,dspc,tab,dninit)
-                i+=1
+            grid.auto_fit_columns = True
+            display(grid)
             print()
-            print()
-            print()
-            print()
-            print("Below are the hybridizing sequences and where they align to the cDNA:")
-            print()
-            print("Pair# ","cDNAcoord ","Probe ","cDNAcoord ","cDNAcoord ","Probe ","cDNAcoord")
-            #i=0
-            i=len(seqs)-1
-            while i >= 0:
-                pair = i+1
-                coord1 = cdna - int(seqs[i][0])
-                coord2 = coord1 - 25
-                coord3 = coord2 - 2
-                coord4 = cdna - int(seqs[i][2])
-                print(pair,tab,coord1,tab,seqs[i][1][0:25],tab,coord2,tab,tab,coord3,tab,seqs[i][1][27:52],tab,coord4)
-                i-=1
+            print("Please select which probes you would like to keep")
             print()
             print()
             print()
@@ -301,9 +272,9 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
     
     
     
-    pd.set_option('display.width', 1000) 
+    #pd.set_option('display.width', 1000) 
     
-    
+    df = pd.DataFrame()
     
     if BlastProbes == 'No':
         newlist = max33(maxprobe,newlist,numbr)
@@ -312,21 +283,45 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
         print("From the given parameters, we were able to make "+count+" probe pairs.")
         print()
         print()
-        print("Below is in IDT oPool submission_format.")
-        print("Copy and Paste the lines below into an XLSX file for submission to IDT starting from 'Pool name'.")
-        print()
-        print("Pool name, Sequence")
         a=0
         while a < len(newlist):
             seqs[a] = [newlist[a][0],str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]]),newlist[a][1]]
             graphic[newlist[a][0]:newlist[a][1]] = str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]])
-            print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+upinit+uspc+str(seqs[a][1][27:52])))
-            print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+str(seqs[a][1][0:25])+dspc+dninit))
             a+=1
         g = ''
         g = g.join(graphic)
         g = Seq(g)
         g = g.reverse_complement()
+
+        df = pd.DataFrame.from_dict(seqs, orient='index', columns=['Start', 'seq', 'End'])
+        df['InitiatorUp'] = upinit
+        df['SpacerUp'] = uspc
+        df['Probe1'] = df['seq'].str[27:52]
+        df['Probe2'] = df['seq'].str[0:25]
+        df['SpacerDw'] = dspc
+        df['InitiatorDW'] = dninit
+        df["Select"] = False
+        columns = ["Select","InitiatorUp","SpacerUp","Start","Probe1","Probe2","End","SpacerDw","InitiatorDW"]
+        df.drop(labels=['seq'], axis=1, inplace= True)
+        df.index.name = "Pair"
+        df = df[columns]
+
+        grid = DataGrid(df, editable=True, selection_mode="row")
+        grid.auto_fit_columns = True
+
+
+        # print("Below is in IDT oPool submission_format.")
+        # print("Copy and Paste the lines below into an XLSX file for submission to IDT starting from 'Pool name'.")
+        # print()
+        # print("Pool name, Sequence")
+
+        # while a < len(newlist):
+        #     seqs[a] = [newlist[a][0],str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]]),newlist[a][1]]
+        #     graphic[newlist[a][0]:newlist[a][1]] = str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]])
+        #     print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+upinit+uspc+str(seqs[a][1][27:52])))
+        #     print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+str(seqs[a][1][0:25])+dspc+dninit))
+        #     a+=1
+
     else:
         graphic = ['n']*cdna
 
