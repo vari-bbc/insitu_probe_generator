@@ -171,35 +171,35 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
 
 
 
-    def output(cdna,g,fullseq,count,amplifier,name,pause,seqs,df_grid):
+    # def output(cdna,g,fullseq,count,amplifier,name,pause,seqs,df_grid):
 
-        if int(count) > 0:
-            print()
-            print()
-            print("Figure Layout of Probe Sequences:")
-            print("")
-            print(str(amplifier+"_"+str(name)+"_PP"+str(count)+"_Dla"+str(pause)))
-            grid.auto_fit_columns = True
-            display(grid)
-            print()
-            print("Please select which probes you would like to keep")
-            print()
-            print()
-            print()
-            print()
-            print("This is the in-place localization of the probe pairs along the full-length sense cDNA.")
-            print()
-            print(">"+name+" Sense Strand")
-            print(g)
-            print()
-            print()
-            print()
-            print()
-            print("Anti-sense sequence used to create probes:")
-            print()
-            print(">"+name+" Anti-Sense Strand")
-            print(fullseq)    
-            return()
+    #     if int(count) > 0:
+    #         print()
+    #         print()
+    #         print("Figure Layout of Probe Sequences:")
+    #         print("")
+    #         print(str(amplifier+"_"+str(name)+"_PP"+str(count)+"_Dla"+str(pause)))
+    #         grid.auto_fit_columns = True
+    #         display(grid)
+    #         print()
+    #         print("Please select which probes you would like to keep")
+    #         print()
+    #         print()
+    #         print()
+    #         print()
+    #         print("This is the in-place localization of the probe pairs along the full-length sense cDNA.")
+    #         print()
+    #         print(">"+name+" Sense Strand")
+    #         print(g)
+    #         print()
+    #         print()
+    #         print()
+    #         print()
+    #         print("Anti-sense sequence used to create probes:")
+    #         print()
+    #         print(">"+name+" Anti-Sense Strand")
+    #         print(fullseq)    
+    #         return()
 
 
 
@@ -471,7 +471,7 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
             )
 
             # if there is more probe pairs than requested, filter them.
-            if (count > numbr):            
+            if (int(count) > numbr):            
             # if there is enough good sequences, just use that filter and max33
                 df_good = df.query("Status == 'Good'")
                 if (len(df_good) > numbr):
@@ -530,25 +530,25 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
     
     
 
-    
+        display(grid)
 
 
     
-    output(cdna,g,fullseq,count,amplifier,name,pause,seqs)
+    # output(cdna,g,fullseq,count,amplifier,name,pause,seqs)
     
     
         
-    print()
-    print()
-    if report == 'Yes':
-        print("Run "+str(date.today())+"\n   with settings: \n\t5'Pause:\t"+str(pause)+" \n\tChoice of probe set:\t"+str((choose))+"\tPair used: "+str(choice)+" \n\tLength of acceptable polyA/polyT runs:\t"+str(polyAT)+" \n\tLength of acceptable polyC/polyG runs:\t"+str(polyCG)+" \n\tBLASTn of Probes:\t"+str((BlastProbes))+" \n\tRemoval of probes with low quality BLAST hits:\t"+str((dropout)) )
+    # print()
+    # print()
+    # if report == 'Yes':
+    #     print("Run "+str(date.today())+"\n   with settings: \n\t5'Pause:\t"+str(pause)+" \n\tChoice of probe set:\t"+str((choose))+"\tPair used: "+str(choice)+" \n\tLength of acceptable polyA/polyT runs:\t"+str(polyAT)+" \n\tLength of acceptable polyC/polyG runs:\t"+str(polyCG)+" \n\tBLASTn of Probes:\t"+str((BlastProbes))+" \n\tRemoval of probes with low quality BLAST hits:\t"+str((dropout)) )
 
-    print()
-    print()
-    print("References: ")
-    print()
-    print(" See Choi et al. 2018 Development for HCR3.0 methodology details ")
-    print(" https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6031405/ ")
-    print()
-    print(" See Wang et al. 2020 BioRxiv for expanded amplifier information ")
-    print(' https://www.biorxiv.org/content/10.1101/274456v3 ')
+    # print()
+    # print()
+    # print("References: ")
+    # print()
+    # print(" See Choi et al. 2018 Development for HCR3.0 methodology details ")
+    # print(" https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6031405/ ")
+    # print()
+    # print(" See Wang et al. 2020 BioRxiv for expanded amplifier information ")
+    # print(' https://www.biorxiv.org/content/10.1101/274456v3 ')
