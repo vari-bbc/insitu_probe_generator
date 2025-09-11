@@ -9,6 +9,7 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
     pd.set_option('display.width', 80)
     from datetime import date
     from IPython.display import display, Markdown
+    from ipydatagrid import DataGrid, TextRenderer, Expr
 
     __author__ = "Ryan W Null - ORCID_0000-0002-3830-4152"
     __copyright__ = "Copyright 2019-2021  The Ozpolat Lab,  https://bduyguozpolat.org/ "
@@ -88,53 +89,86 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
             print ("Please try again")
         return([upspc,dnspc,up,dn])
 
-    def max33(maxprobe,seqs,numbr):
-        if maxprobe == 'Yes':
-            if int(numbr) < int(len(seqs)):
-                reduced = []
-                entry = np.zeros(len(seqs))
-                if numbr == 0:
-                    keep = 33
-                else:
-                    keep = numbr             # this is the max number of probe pairs that ensures the cheapest opool at 50pmol
-                skip = (len(seqs))-keep
-                zeroesperones = int(skip/keep)
-                addtnl0s = skip-(keep*zeroesperones)
-                a = 0
-                c = 0
-                pos = 0
-                while a < keep:
-                    entry[pos] += 1
-                    a += 1
+    def max33(maxprobe, seqs, numbr):
+        """
+        Filter `seqs` down to at most `numbr` items using the same spacing logic
+        as your original function. Returns a dictionary with:
+        - reduced:   the filtered list of seqs
+        - keep_idx:  ndarray of original positions kept (use for df.iloc)
+        - removed_idx: ndarray of original positions removed
+        - mask:      boolean mask of length len(seqs) (True = kept)
+        - message:   optional info string (e.g., when no action taken)
+        """
+        seqs = list(seqs)
+        n = len(seqs)
+        num = int(numbr)
+
+        # Default: no change
+        result = {
+            "reduced": list(seqs),
+            "keep_idx": np.arange(n, dtype=int),
+            "removed_idx": np.array([], dtype=int),
+            "mask": np.ones(n, dtype=bool),
+            "message": None,
+        }
+
+        # Only reduce when requested
+        if maxprobe == "Yes" and num < n:
+            keep = 33 if num == 0 else num
+            keep = max(0, min(keep, n))
+
+            # How many items will be skipped (removed)
+            skip = n - keep
+            if keep == 0:
+                # Keep nothing
+                mask = np.zeros(n, dtype=bool)
+                result.update({
+                    "reduced": [],
+                    "keep_idx": np.array([], dtype=int),
+                    "removed_idx": np.arange(n, dtype=int),
+                    "mask": mask,
+                })
+                return result
+
+            # Distribute zeros (skips) between ones (kept) exactly like your code
+            zeros_per_one = skip // keep
+            extra_zeros = skip - keep * zeros_per_one  # first `extra_zeros` gaps get one extra zero
+
+            kept_positions = []
+            pos = 0
+            used_extra = 0
+            for _ in range(keep):
+                # place a "1" (keep) at current position
+                kept_positions.append(pos)
+                pos += 1
+                # optional extra zero
+                if used_extra < extra_zeros:
                     pos += 1
-                    if c < addtnl0s:
-                        entry[pos] += 0
-                        c += 1
-                        pos += 1
-                    b = 0
-                    while b < zeroesperones:
-                        entry[pos] += 0
-                        pos += 1
-                        b += 1
-                a=0
-                while a < addtnl0s-c:
-                    entry[pos] += 0
-                    pos += 1
-                    a+=1            
-                a = 0
-                while a < len(seqs):
-                    if entry[a] == 1:
-                        reduced.append(seqs[a])
-                        a+=1
-                    else:
-                        a+=1
-                        pass     
-                return(reduced)
-        elif  int(numbr) >=  int(len(seqs)):
-            print("There was were fewer than "+str(numbr)+" pairs, no action taken.")
-            return(seqs)
-        else:
-            return(seqs)
+                    used_extra += 1
+                # the regular zeros
+                pos += zeros_per_one
+
+            kept_positions = np.asarray(kept_positions, dtype=int)
+
+            mask = np.zeros(n, dtype=bool)
+            mask[kept_positions] = True
+            removed_idx = np.where(~mask)[0]
+
+            reduced = [seqs[i] for i in kept_positions]
+
+            result.update({
+                "reduced": reduced,
+                "keep_idx": kept_positions,
+                "removed_idx": removed_idx,
+                "mask": mask,
+            })
+            return result
+
+        # Mirror your original "no action" branch
+        if num >= n:
+            result["message"] = f"There were fewer than {num} pairs, no action taken."
+        return result
+
 
 
     def output(cdna,g,fullseq,count,amplifier,name,pause,seqs,df_grid):
@@ -270,227 +304,225 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
     
     count = str(len(newlist))
     
-    
-    
-    #pd.set_option('display.width', 1000) 
-    
-    df = pd.DataFrame()
-    
-    if BlastProbes == 'No':
-        newlist = max33(maxprobe,newlist,numbr)
-        count = str(len(newlist))
-        print()
-        print("From the given parameters, we were able to make "+count+" probe pairs.")
-        print()
-        print()
-        a=0
-        while a < len(newlist):
-            seqs[a] = [newlist[a][0],str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]]),newlist[a][1]]
-            graphic[newlist[a][0]:newlist[a][1]] = str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]])
-            a+=1
-        g = ''
-        g = g.join(graphic)
-        g = Seq(g)
-        g = g.reverse_complement()
-
-        df = pd.DataFrame.from_dict(seqs, orient='index', columns=['Start', 'seq', 'End'])
-        df['InitiatorUp'] = upinit
-        df['SpacerUp'] = uspc
-        df['Probe1'] = df['seq'].str[27:52]
-        df['Probe2'] = df['seq'].str[0:25]
-        df['SpacerDw'] = dspc
-        df['InitiatorDW'] = dninit
-        df["Select"] = False
-        columns = ["Select","InitiatorUp","SpacerUp","Start","Probe1","Probe2","End","SpacerDw","InitiatorDW"]
-        df.drop(labels=['seq'], axis=1, inplace= True)
-        df.index.name = "Pair"
-        df = df[columns]
-
-        grid = DataGrid(df, editable=True, selection_mode="row")
-        grid.auto_fit_columns = True
-
-
-        # print("Below is in IDT oPool submission_format.")
-        # print("Copy and Paste the lines below into an XLSX file for submission to IDT starting from 'Pool name'.")
-        # print()
-        # print("Pool name, Sequence")
-
-        # while a < len(newlist):
-        #     seqs[a] = [newlist[a][0],str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]]),newlist[a][1]]
-        #     graphic[newlist[a][0]:newlist[a][1]] = str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]])
-        #     print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+upinit+uspc+str(seqs[a][1][27:52])))
-        #     print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+str(seqs[a][1][0:25])+dspc+dninit))
-        #     a+=1
-
+    if int(count) == 0:
+        print("Hmm.... There were no probes that fit the parameters. Check the full sequence field")
     else:
-        graphic = ['n']*cdna
-
-
-
-
-
-## THE FOLLOWING SECTION CREATES A FASTA FILE FROM THE POTENTIAL PROBE SEQUENCES (BOTH 25BP PROBES COUPLED AS A SINGLE 52BP SEQUENCE INCLUDING A 2BP "nn" SPACER)        
-    ## THE RESULTANT FASTA FILE IS BLASTED AGAINST THE USER SPECIFIED TRANSCRIPTOME FASTA 
-    ## PROBES THAT MATCH A SEQUENCE IN BLAST WITH A LENGTH MATCH, 60BP > X > 40BP, AND AN E-VALUE < 1E-15 ARE KEPT, OTHERS ARE DISCARDED
-
-
-    if BlastProbes == "Yes":
-        print()
-        print("BLASTn of probes in progress, this may take a few minutes.")
-        print()
-        seqs={} 
-        remove = pd.DataFrame(columns = ["pos1","seq","pos2","fasta","num"])
-        a=0
-        tmpFA = open((str(name)+"PrelimProbes.fa"), "w")
-        while a < len(newlist):
-            nm = str('>'+str(a))
-            seqs[a] = [newlist[a][0],str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]]),newlist[a][1],nm,a]
-            remove = remove.append({'pos1' : newlist[a][0], 'seq' : str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]]), 'pos2' : newlist[a][1], 'fasta':nm, 'num':a},  
-            ignore_index = True) 
-            tmpFA.write(nm)
-            tmpFA.write('\n')
-            tmpFA.write(seqs[a][1])
-            tmpFA.write('\n')
-            a+=1
-        tmpFA.close()
+        df = pd.DataFrame()
         
-        
-        
-        
-    ## Probe BLAST setup and execution from FASTA file prepared in previous step
+        if BlastProbes == 'No':
+            newlist = max33(maxprobe,newlist,numbr)
+            newlist = newlist['reduced']
+            count = str(len(newlist))
+            print()
+            print("From the given parameters, we were able to make "+count+" probe pairs.")
+            print()
+            print()
+            a=0
+            while a < len(newlist):
+                seqs[a] = [newlist[a][0],str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]]),newlist[a][1]]
+                graphic[newlist[a][0]:newlist[a][1]] = str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]])
+                a+=1
+            g = ''
+            g = g.join(graphic)
+            g = Seq(g)
+            g = g.reverse_complement()
 
-        cline = bn(query = str(name)+"PrelimProbes.fa", subject = db, outfmt = 6, task = 'blastn-short') #this uses biopython's blastn formatting function and creates a commandline compatible command 
-        stdout, stderr = cline() #cline() calls the string as a command and passes it to the command line, outputting the blast results to one variable and errors to the other
+            df = pd.DataFrame.from_dict(seqs, orient='index', columns=['Start', 'seq', 'End'])
+            df['InitiatorUp'] = upinit
+            df['SpacerUp'] = uspc
+            df['Probe1'] = df['seq'].str[27:52]
+            df['Probe2'] = df['seq'].str[0:25]
+            df['SpacerDw'] = dspc
+            df['InitiatorDW'] = dninit
+            df["Select"] = True
+            columns = ["Select","InitiatorUp","SpacerUp","Start","Probe1","Probe2","End","SpacerDw","InitiatorDW"]
+            df.drop(labels=['seq'], axis=1, inplace= True)
+            df.index.name = "Pair"
+            df = df[columns]
 
-        ## From results of blast creating a numpy array (and Pandas database)
-        dt = [(np.unicode_,8),(np.unicode_,40),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.float),(np.float)]
-        blastresult = (np.genfromtxt(io.StringIO(stdout),delimiter = '\t',dtype = dt))# "qseqid,sseqid,pident,length,mismatch,gapopen,qstart,qend,sstart,send,evalue,bitscore")
-        
+            grid = DataGrid(df, editable=True, selection_mode="row")
+            grid.auto_fit_columns = True
+            
+
+            # # 1) Per-column renderers
+            # renderers = {}
+
+            # # (a) checkbox look for the boolean column
+            # # We don't change the value; just how it's *drawn*
+            # renderers['Select'] = TextRenderer(
+            #     horizontal_alignment='center',
+            #     # return '☑' for True, '☐' for False
+            #     format=Expr("'☑' if cell.value else '☐'")
+            # )
+
+            # grid = DataGrid(df, editable=True, selection_mode="row", renderers= renderers)
+            # grid.auto_fit_columns = True
+            # display(grid)
+
+            # print("Below is in IDT oPool submission_format.")
+            # print("Copy and Paste the lines below into an XLSX file for submission to IDT starting from 'Pool name'.")
+            # print()
+            # print("Pool name, Sequence")
+
+            # while a < len(newlist):
+            #     seqs[a] = [newlist[a][0],str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]]),newlist[a][1]]
+            #     graphic[newlist[a][0]:newlist[a][1]] = str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]])
+            #     print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+upinit+uspc+str(seqs[a][1][27:52])))
+            #     print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+str(seqs[a][1][0:25])+dspc+dninit))
+            #     a+=1
+
+        else:
+            graphic = ['n']*cdna
+
+
+
+
+
+        ## THE FOLLOWING SECTION CREATES A FASTA FILE FROM THE POTENTIAL PROBE SEQUENCES (BOTH 25BP PROBES COUPLED AS A SINGLE 52BP SEQUENCE INCLUDING A 2BP "nn" SPACER)        
+            ## THE RESULTANT FASTA FILE IS BLASTED AGAINST THE USER SPECIFIED TRANSCRIPTOME FASTA 
+            ## PROBES THAT MATCH A SEQUENCE IN BLAST WITH A LENGTH MATCH, 60BP > X > 40BP, AND AN E-VALUE < 1E-15 ARE KEPT, OTHERS ARE DISCARDED
+
+
+        if BlastProbes == "Yes":
+            print()
+            print("BLASTn of probes in progress, this may take a few minutes.")
+            print()
+            seqs={} 
+            remove = pd.DataFrame(columns = ["pos1","seq","pos2","fasta","num"])
+            a=0
+            tmpFA = open((str(name)+"PrelimProbes.fa"), "w")
+            while a < len(newlist):
+                nm = str('>'+str(a))
+                seqs[a] = [newlist[a][0],str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]]),newlist[a][1],nm,a]
+                graphic[newlist[a][0]:newlist[a][1]] = str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]])
+                remove.loc[a,['pos1','seq','pos2','fasta','num']] = [newlist[a][0] , str(fullseq[newlist[a][0]:(newlist[a][0]+25)]+"nn"+fullseq[(newlist[a][0]+27):newlist[a][1]]), newlist[a][1],nm, a] 
+                tmpFA.write(nm)
+                tmpFA.write('\n')
+                tmpFA.write(seqs[a][1])
+                tmpFA.write('\n')
+                a+=1
+            tmpFA.close()
+            g = ''
+            g = g.join(graphic)
+            g = Seq(g)
+            g = g.reverse_complement()
+            # same as seq w/ no blast
+            seqs_sub = {k: v[:3] for k,v in seqs.items()}
+            
+            df = pd.DataFrame.from_dict(seqs_sub, orient='index', columns=['Start', 'seq', 'End'])
+            df['InitiatorUp'] = upinit
+            df['SpacerUp'] = uspc
+            df['Probe1'] = df['seq'].str[27:52]
+            df['Probe2'] = df['seq'].str[0:25]
+            df['SpacerDw'] = dspc
+            df['InitiatorDW'] = dninit
+            df["Select"] = False
+            columns = ["Select","InitiatorUp","SpacerUp","Start","Probe1","Probe2","End","SpacerDw","InitiatorDW"]
+            df.drop(labels=['seq'], axis=1, inplace= True)
+            df.index.name = "Pair"
+            df = df[columns]
+            
+        ## Probe BLAST setup and execution from FASTA file prepared in previous step
+
+            cline = bn(query = str(name)+"PrelimProbes.fa", subject = db, outfmt = 6, task = 'blastn-short') #this uses biopython's blastn formatting function and creates a commandline compatible command 
+            stdout, stderr = cline() #cline() calls the string as a command and passes it to the command line, outputting the blast results to one variable and errors to the other
+
+            ## From results of blast creating a numpy array (and Pandas database)
+            dt = [(np.str_,8),(np.str_,40),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.int32),(np.float64),(np.float64)]
+            blastresult = (np.genfromtxt(io.StringIO(stdout),delimiter = '\t',dtype = dt))# "qseqid,sseqid,pident,length,mismatch,gapopen,qstart,qend,sstart,send,evalue,bitscore")
+
+            blast_db = pd.DataFrame(blastresult) 
+
+            ## Create a list of pairs that pass the criteria (good) and do not (bad)
+
+            good = list(blast_db.loc[(blast_db['f11']>=75.0) & (blast_db['f10']<=float(1e-13))].f0)
+            good = [int(n) for n in good] 
+            # If there is more than two probes, it might be off target too right? mak it problematic for now.
+            multi = {x for x in good if good.count(x) > 1}
+            good = set(good)
+            good -= multi      
+
+            bad = list(blast_db.loc[(blast_db['f11']>=60.0) & (blast_db['f10']>float(1e-13))].f0)
+            bad = [int(n) for n in bad]
+            bad = set(bad)
+            bad |= multi
+
+            in_good = df.index.isin(good)
+            in_bad  = df.index.isin(bad)
+
+
+            # if there is not any good hits raise error
+            if not good:
+                print("Hmm.... There were no probes that fit the parameters specified within the FASTA file.   ")
+                print()
+                print()
+                print("  Try increasing the length of homopolymers tolerated, or BLAST against a different FASTA file.")
+                print()
+                print("  If BLASTing a heterologous sequence, i.e. GFP, this error could be because the RNA doesn't exist in your species. ")
+                print()
+                print()
+                raise ValueError("Empty list of probes that passes the criteria")
+
+            # Add blast info to df
+            df["Status"] = np.select(
+                [in_good & in_bad, in_good & ~in_bad, ~in_good & in_bad],
+                ["Problematic", "Good", "Bad"],
+                default=np.nan  # or "Unknown"
+            )
+
+            # if there is more probe pairs than requested, filter them.
+            if (count > numbr):            
+            # if there is enough good sequences, just use that filter and max33
+                df_good = df.query("Status == 'Good'")
+                if (len(df_good) > numbr):
+                    # filter newlist with df.index the use that to filter df
+                    newlist = newlist[df_good.index]
+                    newlist = max33(maxprobe,newlist,numbr)
+                    df = df.loc[newlist['keep_idx']]
+                    newlist = newlist['reduced'] #optional?
+                else:
+                    diff = len(df_good) - numbr
+                    df_bad = df.query("Status != 'Good'")
+                    df_bad.sample(diff)
+                    df = pd.concat([df_good,df_bad])
+
+            grid = DataGrid(df, editable=True, selection_mode="row")
+            grid.auto_fit_columns = True
+                
 
 
         ## This loop takes the data from the blast result and filters out probe pairs that do not meet criteria
             ## by setting a length match requirement this eliminates off-target pairs and half-pairs
             ## the e-value threshold ensures that the probe is a good match to the target
 
-        i=0
-        filterblast = []
-        filterblastbad = []
-        uniques = []
-        uniquesbad = []
-        while i < len(blastresult):
-            if (blastresult[i][11]>=75.0 and blastresult[i][10]<=float(1e-13)):  #abs(blastresult[i][9]-blastresult[i][8])>40 and abs(blastresult[i][9]-blastresult[i][8])<=60
-                filterblast.append(blastresult[i])
-                uniques.append((blastresult[i][0])) #str
-                i+=1
-            elif (blastresult[i][11]>=60.0 and blastresult[i][10]>float(1e-12)):
-                filterblastbad.append(blastresult[i])
-                uniquesbad.append((blastresult[i][0])) #str
-                i+=1
-            else:
-                i+=1
-        
 
-    
-        if len(filterblast) != 0:
-            filterblast = np.array(filterblast)
-            uniques = np.unique((uniques))     ##
-            count = str((len(uniques)))
-            filterblastbad = np.array(filterblastbad)
-            uniquesbad = np.unique((uniquesbad)) 
-            if len(uniquesbad) > 0:
-                if dropout == 'Yes':
-                    ind = 0
-                    for a in uniquesbad:
-                        remove = remove.drop(remove.index[int(a)-ind])
-                        ind += 1
-                    remove = remove.reset_index()
-                    
-            print()
-            print()
-            print("Probe pairs that had possible off-target matches to the provided database (lower e-value but with high site coverage). ")
-            print("   Pairs ")
-            if not uniquesbad :
-                print("No probes detected.")
-            else :
-                print(uniquesbad)
-            print()
-            print("Probe pairs that had good matches to the provided database were determined to be the following.")
-            print("   Pairs ")
-            print(*uniques, sep=', ')
-            print()
-            print()
-            if show == 'Yes':
-                print()
-                print()
-                print("The list below shows potentially problematic binding between a probe and some sequence in the provided database.  ")
-                print("    Consider checking if the resulting subject ID is a cDNA you intend to amplify. ")
-                print()
-                print("index qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue qcovs")
-                print()
-                print(pd.DataFrame(filterblastbad))
-                print()
-                print()
-                print()
-                print()
-                print()
-                print("This is a detailed look at the probes with good matches.")
-                print()    
-                print("index qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue qcovs")
-                print()
-                print(pd.DataFrame(filterblast))
-                print()
+            # print()
+            # print()
+            # print("The probes are provided below in IDT oPool submission format.")
+            # print("Copy and Paste the lines below into an XLSX file for submission to IDT starting from 'Pool name'.")
+            # print()
+            # print()
+            # print("Pool name, Sequence")
+            # a=0
+            # b=0
+            # seqs1={}
+            # while a < len(seqs):
+            # #while a < len(uniques):
+            #     tmp = (seqs[a])
+            #     print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+upinit+uspc+str(tmp[1][27:52])))
+            #     print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+str(tmp[1][0:25])+dspc+dninit))
+            #     graphic[tmp[0]:tmp[2]] = str(tmp[1])
+            #     seqs1[b]=tmp
+            #     b+=1
+            #     a+=1
+            # seqs=seqs1
+            
+            
+            g = ''
+            g = g.join(graphic) 
+            g = Seq(g)
+            g = g.reverse_complement()
 
-            if BlastcDNA == 'n':   
-                if len(uniquesbad) > 0:
-                    if dropout == 'Yes':
-                        remove = remove.to_dict()
-                        a=0
-                        seqs={}
-                        while a <len(remove["pos1"]):
-                            seqs[a] = (remove["pos1"][a],remove["seq"][a],remove["pos2"][a],remove["fasta"][a],remove["num"][a])
-                            a += 1
-                
-                seqs = max33(maxprobe,seqs,numbr)
-                count = str(len(seqs))
-                print()
-                print()
-                print()
-                print()
-                print("The probes are provided below in IDT oPool submission format.")
-                print("Copy and Paste the lines below into an XLSX file for submission to IDT starting from 'Pool name'.")
-                print()
-                print()
-                print("Pool name, Sequence")
-                a=0
-                b=0
-                seqs1={}
-                while a < len(seqs):
-                #while a < len(uniques):
-                    tmp = (seqs[a])
-                    print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+upinit+uspc+str(tmp[1][27:52])))
-                    print(str(amplifier+'_'+name+'_'+count+'_Dla'+str(pause)+','+str(tmp[1][0:25])+dspc+dninit))
-                    graphic[tmp[0]:tmp[2]] = str(tmp[1])
-                    seqs1[b]=tmp
-                    b+=1
-                    a+=1
-                seqs=seqs1
-                
-                
-                g = ''
-                g = g.join(graphic) 
-                g = Seq(g)
-                g = g.reverse_complement()
-        else:
-            print()
-            print()
-            print("Hmm.... There were no probes that fit the parameters specified within the FASTA file.   ")
-            print()
-            print()
-            print("  Try increasing the length of homopolymers tolerated, or BLAST against a different FASTA file.")
-            print()
-            print("  If BLASTing a heterologous sequence, i.e. GFP, this error could be because the RNA doesn't exist in your species. ")
-            print()
-            print()
 
 
     
