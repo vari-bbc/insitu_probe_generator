@@ -109,7 +109,6 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
             "keep_idx": np.arange(n, dtype=int),
             "removed_idx": np.array([], dtype=int),
             "mask": np.ones(n, dtype=bool),
-            "message": None,
         }
 
         # Only reduce when requested
@@ -163,10 +162,6 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
                 "mask": mask,
             })
             return result
-
-        # Mirror your original "no action" branch
-        if num >= n:
-            result["message"] = f"There were fewer than {num} pairs, no action taken."
         return result
 
 
@@ -340,8 +335,15 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
             df.index.name = "Pair"
             df = df[columns]
 
-            grid = DataGrid(df, editable=True, selection_mode="row")
-            grid.auto_fit_columns = True
+            grid = DataGrid(
+                df,
+                auto_fit_columns=True,
+                auto_fit_params={'mode': 'all', 'max_rows': 2000, 'padding': 8},
+                editable=True, 
+                selection_mode="row",
+
+                )
+            grid.layout = {'width': '100%', 'height': '420px'}
             
 
             # # 1) Per-column renderers
@@ -486,8 +488,15 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
                     df_bad.sample(diff)
                     df = pd.concat([df_good,df_bad])
 
-            grid = DataGrid(df, editable=True, selection_mode="row")
-            grid.auto_fit_columns = True
+            grid = DataGrid(
+                df,
+                auto_fit_columns=True,
+                auto_fit_params={'mode': 'all', 'max_rows': 2000, 'padding': 8},
+                editable=True, 
+                selection_mode="row",
+
+                )
+            grid.layout = {'width': '100%', 'height': '420px'}
                 
 
 
@@ -530,7 +539,7 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
     
     
 
-        display(grid)
+        return(grid)
 
 
     
