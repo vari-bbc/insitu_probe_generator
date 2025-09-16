@@ -539,7 +539,7 @@ def df_select (name,fullseq,amplifier,pause,choose,polyAT,polyCG,BlastProbes,db,
     
     
 
-        return(grid)
+        display(grid)
 
 
     
